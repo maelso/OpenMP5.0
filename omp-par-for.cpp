@@ -35,7 +35,7 @@ int main(int argc, char const *argv[])
     for (int time = time_m, t0 = (time) % (2), t1 = (time + 1) % (2); time < time_M; time += 1, t0 = (time) % (2), t1 = (time + 1) % (2))
     {
     #pragma omp target teams distribute parallel for collapse(2)
-        for (int x = x_m; x < x_M; x += 1)
+        for (int x = x_m; x < x_M/2; x += 1)
         {
             for (int y = y_m; y < y_M; y += 1)
             {
