@@ -26,7 +26,7 @@ int main(int argc, char const *argv[])
 
     // print_array_2d(u, size_u[0], size_u[1]);
 
-    int num_threads = 8;
+    int num_threads = 2;
 
     omp_set_num_threads(num_threads);
     #pragma omp parallel
@@ -52,7 +52,7 @@ int main(int argc, char const *argv[])
 
         if(omp_get_thread_num() != 0){
             // CPU working
-            for (int time = time_m; time < time_M / (num_threads-1); time += 1)
+            for (int time = time_m; time < time_M; time += 1)
             {
                 #pragma omp parallel for collapse(2) schedule(guided)
                 for (int x = x_M / 2; x < x_M; x += 1)
