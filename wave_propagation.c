@@ -14,8 +14,8 @@ int main(int argc, char const *argv[])
     int BORDER_SIZE = 0;
     int SPACE_ORDER = 2;
     int time_m = 1;
-    int time_M = 8;
-    int GRID_SIZE = 44;
+    int time_M = 72;
+    int GRID_SIZE = 141;
     int x_m = (int)BORDER_SIZE + SPACE_ORDER;
     int x_M = (int)BORDER_SIZE + SPACE_ORDER + GRID_SIZE;
     int y_m = (int)BORDER_SIZE + SPACE_ORDER;
@@ -57,7 +57,7 @@ int main(int argc, char const *argv[])
         }
     }
     // source injection
-    u[0][22][22] = 1.;
+    u[0][72][72] = 1.;
 
     
     //printing values
@@ -78,7 +78,7 @@ int main(int argc, char const *argv[])
     #pragma omp parallel
     {
         // CPU working
-        float r1 = 0.0784;
+        float r1 = 7.839999675750732421875;
         for (int time = time_m, t0 = (time)%(3), t1 = (time + 1)%(3), t2 = (time + 2)%(3); time <= time_M; time += 1, t0 = (time)%(3), t1 = (time + 1)%(3), t2 = (time + 2)%(3))
         {
             #pragma omp for schedule(guided)
@@ -87,13 +87,13 @@ int main(int argc, char const *argv[])
                 for (int y = y_m - 1; y < y_M - 1; y += 1)
                 {
 		        float r0 = vp[x + 2][y + 2] * vp[x + 2][y + 2];
-                u[t1][x + 2][y + 2] = -4.0F * r0 * r1 * u[t0][x + 2][y + 2] +
-                                      1.0F * (r0 * r1 * u[t0][x + 1][y + 2] +
-                                              r0 * r1 * u[t0][x + 2][y + 1] +
-                                              r0 * r1 * u[t0][x + 2][y + 3] +
-                                              r0 * r1 * u[t0][x + 3][y + 2] -
-                                              u[t2][x + 2][y + 2]) +
-                                      2.0F * u[t0][x + 2][y + 2];
+                u[t1][x + 2][y + 2] = -3.99999982e-2F * r0 * r1 * u[t0][x + 2][y + 2] + 
+                                       9.99999955e-3F * (r0 * r1 * u[t0][x + 1][y + 2] + 
+                                                         r0 * r1 * u[t0][x + 2][y + 1] + 
+                                                         r0 * r1 * u[t0][x + 2][y + 3] + 
+                                                         r0 * r1 * u[t0][x + 3][y + 2]) + 
+                                       1.99999991F * u[t0][x + 2][y + 2] - 
+                                       9.99999955e-1F * u[t2][x + 2][y + 2];
                 }
             }
         }
