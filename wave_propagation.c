@@ -23,8 +23,27 @@ int main(int argc, char const *argv[])
 
     int size_u[] = {GRID_SIZE + 2 * BORDER_SIZE + 2 * SPACE_ORDER, GRID_SIZE + 2 * BORDER_SIZE + 2 * SPACE_ORDER};
     
-    float vp[size_u[0]][size_u[1]];
-    float u[TIME_ORDER +1][size_u[0]][size_u[1]];
+    float **vp;
+    float ***u;
+
+    // Allocate data
+    printf("Allocating u array with dimensions %dx%dx%d...\n", TIME_ORDER + 1, size_u[0], size_u[1]);
+    u = (float ***)malloc(sizeof(float **) * (TIME_ORDER + 1));
+    for (int i = 0; i < TIME_ORDER + 1; i++)
+    {
+        u[i] = (float **)malloc(sizeof(float *) * size_u[0]);
+        for (int j = 0; j < size_u[0]; j++)
+        {
+            u[i][j] = (float *)malloc(sizeof(float) * size_u[1]);
+        }
+    }
+
+    printf("Allocating vp array with dimensions %dx%d...\n", size_u[0], size_u[1]);
+    vp = (float **)malloc(sizeof(float *) * size_u[0]);
+    for (int j = 0; j < size_u[0]; j++)
+    {
+        vp[j] = (float *)malloc(sizeof(float) * size_u[1]);
+    }
 
     //inicializing values
     for (int j = 0; j < size_u[0]; j++)
@@ -34,7 +53,7 @@ int main(int argc, char const *argv[])
             u[0][j][k] = 0.0;
             u[1][j][k] = 0.0;
             u[2][j][k] = 0.0;
-	    vp[j][k] = 1.5;
+	        vp[j][k] = 1.5;
         }
     }
     // source injection
@@ -42,6 +61,7 @@ int main(int argc, char const *argv[])
 
     
     //printing values
+    printf("Printing initial values...\n");
     for (int j = 0; j < size_u[0]; j++)
     {
         for (int k = 0; k < size_u[1]; k++)
@@ -62,13 +82,18 @@ int main(int argc, char const *argv[])
         for (int time = time_m, t0 = (time)%(3), t1 = (time + 1)%(3), t2 = (time + 2)%(3); time <= time_M; time += 1, t0 = (time)%(3), t1 = (time + 1)%(3), t2 = (time + 2)%(3))
         {
             #pragma omp for schedule(guided)
-            for (int x = x_m / 2; x < x_M; x += 1)
+            for (int x = x_m - 1; x < x_M - 1; x += 1)
             {
-                for (int y = y_m; y < y_M; y += 1)
+                for (int y = y_m - 1; y < y_M - 1; y += 1)
                 {
-                    //float r0 = vp[(x*(size_u[0] + 2)) + y + 2] * vp[(x*(size_u[0] + 2)) + y + 2];
-		    float r0 = vp[x + 2][y + 2] * vp[x + 2][y + 2];
-        	    u[t1][x + 2][y + 2] = -4.0F*r0*r1*u[t0][x + 2][y + 2] + 1.0F*(r0*r1*u[t0][x + 1][y + 2] + r0*r1*u[t0][x + 2][y + 1] + r0*r1*u[t0][x + 2][y + 3] + r0*r1*u[t0][x + 3][y + 2] - u[t2][x + 2][y + 2]) + 2.0F*u[t0][x + 2][y + 2];
+		        float r0 = vp[x + 2][y + 2] * vp[x + 2][y + 2];
+                u[t1][x + 2][y + 2] = -4.0F * r0 * r1 * u[t0][x + 2][y + 2] +
+                                      1.0F * (r0 * r1 * u[t0][x + 1][y + 2] +
+                                              r0 * r1 * u[t0][x + 2][y + 1] +
+                                              r0 * r1 * u[t0][x + 2][y + 3] +
+                                              r0 * r1 * u[t0][x + 3][y + 2] -
+                                              u[t2][x + 2][y + 2]) +
+                                      2.0F * u[t0][x + 2][y + 2];
                 }
             }
         }
@@ -86,7 +111,8 @@ int main(int argc, char const *argv[])
         printf("\n");
     }
 
-    //free(u);
+    free(u);
+    free(vp);
     printf("\nend.\n");
     return 0;
 }
