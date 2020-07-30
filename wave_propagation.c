@@ -4,10 +4,11 @@
 #include <stdlib.h>
 #include "omp.h"
 
-void print_array_2d(float *u, int x_size, int y_size);
+void print_array(float *u, int x_size, int y_size);
 
 // Define global variables here
-int DEBUG = 1;
+int DEBUG = 0;
+int SAVE = 0;
 int TIME_ORDER = 3; // Change Request: Actually here we have time order 2, the value 3 is representing t0, t1 and t2
 int DIMS = 2;
 
@@ -61,12 +62,7 @@ int main()
     // source injection
     ut2[(SPACE_ORDER + GRID_X_SIZE/2) * size_u[0] + (size_u[1]/2)] = 1.;
     if(DEBUG) {
-        for(int j=0; j<size_u[0]; j++){
-            for(int k=0; k<size_u[1]; k++){
-                printf("%.2f ", ut2[j*size_u[0] + k] );
-            }
-            printf("\n");
-        }
+        print_array(ut2, size_u[0], size_u[1]);
     }
 
     int num_threads = 1;
@@ -108,9 +104,7 @@ int main()
                     }
                 }
 
-                #pragma omp target update from(ut0[0:gpu_data_domain])
                 #pragma omp target update from(ut1[0:gpu_data_domain])
-                #pragma omp target update from(ut2[0:gpu_data_domain])
                 aux = ut1;
                 ut1 = ut2;
                 ut2 = ut0;
@@ -118,13 +112,9 @@ int main()
             }
             #pragma omp barrier
         }
-        // #pragma omp target update from( (([3][size_u[0]][size_u[1]]) u) [t1][0:size_u[0]][0:size_u[1]])
+
         #pragma omp master
         {
-            #pragma omp target update from( ut0[0:gpu_data_domain])
-            #pragma omp target update from( ut1[0:gpu_data_domain])
-            #pragma omp target update from( ut2[0:gpu_data_domain])
-
             #pragma omp target exit data map(release: vp[0:size_u[0] * size_u[1]])
             #pragma omp target exit data map(release: ut0[0:gpu_data_domain])
             #pragma omp target exit data map(release: ut1[0:gpu_data_domain])
@@ -132,43 +122,27 @@ int main()
         }
     }
 
-    printf("Saving data into .txt file\n");    
-    FILE* arquivo = fopen("saida_21_07_20_cpu_gpu.txt", "w");
-    if(arquivo == NULL) {
-        fprintf(stderr, "Erro ao abrir o arquivo.txt.\n");
-        return 1;
-    }
-    for(int j=0; j<size_u[0]; j++){
-        for(int k=0; k<size_u[1]; k++){
-            fprintf(arquivo, "%.10f ", ut0[j*size_u[0] + k] );
+    if(SAVE){
+        printf("Saving data into .txt file\n");    
+        FILE* arquivo = fopen("saida_gpu.txt", "w");
+        if(arquivo == NULL) {
+            fprintf(stderr, "Erro ao abrir o arquivo.txt.\n");
+            return 1;
         }
-        fprintf(arquivo, "\n");
+        for(int j=0; j<size_u[0]; j++){
+            for(int k=0; k<size_u[1]; k++){
+                fprintf(arquivo, "%.10f ", ut0[j*size_u[0] + k] );
+            }
+            fprintf(arquivo, "\n");
+        }
+        fclose(arquivo);
+        printf("Data saved!\n\n");
     }
-    fclose(arquivo);
-    printf("Data saved!\n\n");
 
     if(DEBUG) {
-        for(int j=0; j<size_u[0]; j++){
-            for(int k=0; k<size_u[1]; k++){
-                printf("%.8f ", ut0[j*size_u[0] + k] );
-            }
-            printf("\n");
-        }
-        printf("\n\n");
-        for(int j=0; j<size_u[0]; j++){
-            for(int k=0; k<size_u[1]; k++){
-                printf("%.8f ", ut1[j*size_u[0] + k] );
-            }
-            printf("\n");
-        }
-        printf("\n\n");
-        for(int j=0; j<size_u[0]; j++){
-            for(int k=0; k<size_u[1]; k++){
-                printf("%.8f ", ut2[j*size_u[0] + k] );
-            }
-            printf("\n");
-        }
-        printf("\n\n");
+        print_array(ut0, size_u[0], size_u[1]);
+        print_array(ut1, size_u[0], size_u[1]);
+        print_array(ut2, size_u[0], size_u[1]);
     }
 
     free(u);
@@ -177,18 +151,13 @@ int main()
     return 0;
 }
 
-void print_array_2d(float *u, int x_size, int y_size)
+void print_array(float *u, int x_size, int y_size)
 {
-    // for (int i = 0; i < TIME_ORDER; i++)
-    // {
-    for (int j = 0; j < x_size; j++)
-    {
-        for (int k = 0; k < y_size; k++)
-        {
-            printf("%.7f ", u[k + j * x_size]);
+    for (int j = 0; j < x_size; j++){
+        for (int k = 0; k < y_size; k++){
+            printf("%.7f ", u[j*x_size + k]);
         }
         printf("\n");
     }
-    printf("\n\n");
-    // }
+    printf("\n");
 }
