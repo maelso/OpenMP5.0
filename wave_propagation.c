@@ -7,6 +7,7 @@
 void print_array_2d(float *u, int x_size, int y_size);
 
 // Define global variables here
+int DEBUG = 1;
 int TIME_ORDER = 3; // Change Request: Actually here we have time order 2, the value 3 is representing t0, t1 and t2
 int DIMS = 2;
 
@@ -17,16 +18,22 @@ int main()
     int BORDER_SIZE = 0;
     int SPACE_ORDER = 2;
     int time_m = 1;
-    // int time_M = 5;
-    // int GRID_SIZE = 8;
-    int time_M = 894;
-    int GRID_SIZE = 1064;
+    int time_M, GRID_X_SIZE, GRID_Y_SIZE;
+    if(DEBUG){
+        time_M = 5;
+        GRID_X_SIZE = 8;
+        GRID_Y_SIZE = 8;
+    }else{
+        time_M = 894;
+        GRID_X_SIZE = 1064;
+        GRID_Y_SIZE = 1064;
+    }
     int x_m = (int)BORDER_SIZE + SPACE_ORDER;
-    int x_M = (int)BORDER_SIZE + SPACE_ORDER + GRID_SIZE;
+    int x_M = (int)BORDER_SIZE + SPACE_ORDER + GRID_X_SIZE;
     int y_m = (int)BORDER_SIZE + SPACE_ORDER;
-    int y_M = (int)BORDER_SIZE + SPACE_ORDER + GRID_SIZE;
+    int y_M = (int)BORDER_SIZE + SPACE_ORDER + GRID_Y_SIZE;
 
-    const int size_u[] = {GRID_SIZE + 2 * BORDER_SIZE + 2 * SPACE_ORDER, GRID_SIZE + 2 * BORDER_SIZE + 2 * SPACE_ORDER};
+    const int size_u[] = {GRID_X_SIZE + 2 * BORDER_SIZE + 2 * SPACE_ORDER, GRID_Y_SIZE + 2 * BORDER_SIZE + 2 * SPACE_ORDER};
 
     float *vp = (float *)calloc(size_u[0] * size_u[1], sizeof(float));
     float *u = (float *)calloc(TIME_ORDER * size_u[0] * size_u[1], sizeof(float));
@@ -52,15 +59,15 @@ int main()
     }
     printf("Injecting source...\n");
     // source injection
-    ut2[size_u[0] * (size_u[1]/2) + size_u[1]/2] = 1.;
-
-    // for(int j=0; j<size_u[0]; j++){
-    //     for(int k=0; k<size_u[1]; k++){
-    //         printf("%.10f ", ut0[j*size_u[0] + k] );
-    //     }
-    //     printf("\n");
-    // }
-    // printf("\n\n");
+    ut2[(SPACE_ORDER + GRID_X_SIZE/2) * size_u[0] + (size_u[1]/2)] = 1.;
+    if(DEBUG) {
+        for(int j=0; j<size_u[0]; j++){
+            for(int k=0; k<size_u[1]; k++){
+                printf("%.2f ", ut2[j*size_u[0] + k] );
+            }
+            printf("\n");
+        }
+    }
 
     int num_threads = 1;
     printf("Using %d threads\n", num_threads);
@@ -125,33 +132,44 @@ int main()
         }
     }
 
-    printf("Saving data into .txt file\n");
-    printf("***************************************************\n");
-    
+    printf("Saving data into .txt file\n");    
     FILE* arquivo = fopen("saida_21_07_20_cpu_gpu.txt", "w");
     if(arquivo == NULL) {
         fprintf(stderr, "Erro ao abrir o arquivo.txt.\n");
         return 1;
     }
+    for(int j=0; j<size_u[0]; j++){
+        for(int k=0; k<size_u[1]; k++){
+            fprintf(arquivo, "%.10f ", ut0[j*size_u[0] + k] );
+        }
+        fprintf(arquivo, "\n");
+    }
+    fclose(arquivo);
+    printf("Data saved!\n\n");
 
-    // for(int i=0; i<TIME_ORDER+1; i++){
+    if(DEBUG) {
         for(int j=0; j<size_u[0]; j++){
             for(int k=0; k<size_u[1]; k++){
-                fprintf(arquivo, "%.10f ", ut0[j*size_u[0] + k] );
+                printf("%.8f ", ut0[j*size_u[0] + k] );
             }
-            fprintf(arquivo, "\n");
+            printf("\n");
         }
-    //     printf("\n\n");
-    // }
-    fclose(arquivo);
-
-    // for(int j=0; j<size_u[0]; j++){
-    //     for(int k=0; k<size_u[1]; k++){
-    //         printf("%.10f ", ut0[j*size_u[0] + k] );
-    //     }
-    //     printf("\n");
-    // }
-    // printf("\n\n");
+        printf("\n\n");
+        for(int j=0; j<size_u[0]; j++){
+            for(int k=0; k<size_u[1]; k++){
+                printf("%.8f ", ut1[j*size_u[0] + k] );
+            }
+            printf("\n");
+        }
+        printf("\n\n");
+        for(int j=0; j<size_u[0]; j++){
+            for(int k=0; k<size_u[1]; k++){
+                printf("%.8f ", ut2[j*size_u[0] + k] );
+            }
+            printf("\n");
+        }
+        printf("\n\n");
+    }
 
     free(u);
     free(vp);
