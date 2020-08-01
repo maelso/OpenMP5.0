@@ -16,6 +16,8 @@ int DIMS = 2;
 int main()
 {
 
+    double start_wait, end_wait;
+    double elapsed_time = 0;
     int balance_factor = 2;
     int BORDER_SIZE = 0;
     int SPACE_ORDER = 2;
@@ -72,7 +74,7 @@ int main()
     printf("Using %d threads\n", num_threads);
 
     omp_set_num_threads(num_threads);
-    #pragma omp parallel
+    #pragma omp parallel private(start_wait, end_wait, elapsed_time)
     {
         #pragma omp master
         {
@@ -85,7 +87,6 @@ int main()
             #pragma omp target enter data map(to: ut2[0:gpu_data_domain])
             printf("Sent ut2 to GPU!\n");
         }
-        printf("Propagating...\n");
         float r1 = 7.839999675750732421875;
         for (int time = time_m; time <= time_M; time++){
             #pragma omp master
@@ -124,7 +125,7 @@ int main()
             }
             #pragma omp master
             {
-                // #pragma omp task wait
+                // #pragma omp taskwait
                 #pragma omp target update from(ut1[0:gpu_data_domain-halo])
                 aux = ut1;
                 ut1 = ut2;
@@ -139,7 +140,10 @@ int main()
                     print_array(ut0, size_u[0], size_u[1]);
                 }
             }
+            start_wait = omp_get_wtime();
             #pragma omp barrier
+            end_wait = omp_get_wtime();
+            elapsed_time += end_wait - start_wait;
         }
         #pragma omp master
         {
@@ -148,6 +152,7 @@ int main()
             #pragma omp target exit data map(release: ut1[0:gpu_data_domain])
             #pragma omp target exit data map(release: ut2[0:gpu_data_domain])
         }
+    printf("Thread %d waiting time = %f seconds\n", omp_get_thread_num(), elapsed_time);
     }
 
     if(SAVE){
