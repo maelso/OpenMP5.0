@@ -28,9 +28,9 @@ int main()
         GRID_X_SIZE = 8;
         GRID_Y_SIZE = 8;
     }else{
-        time_M = 894;
-        GRID_X_SIZE = 1064;
-        GRID_Y_SIZE = 1064;
+        time_M = 1609;
+        GRID_X_SIZE = 2048;
+        GRID_Y_SIZE = 2048;
     }
     int x_m = (int)BORDER_SIZE + SPACE_ORDER;
     int x_m_cpu = (int)BORDER_SIZE + SPACE_ORDER + (GRID_X_SIZE/balance_factor);
@@ -46,7 +46,7 @@ int main()
 
     int time_offset = size_u[0] * size_u[1];
     int halo = size_u[0] * (SPACE_ORDER/2);
-    int gpu_data_domain = ((size_u[0] * size_u[1]) / balance_factor) + halo;
+    int gpu_data_domain = ((size_u[0] * size_u[1]) / balance_factor);
     
     // time pointers
     float *ut0 = u;
@@ -80,11 +80,11 @@ int main()
         {
             #pragma omp target enter data map(to: vp[0:size_u[0] * size_u[1]])
             printf("Sent vp to GPU!\n");
-            #pragma omp target enter data map(to: ut0[0:gpu_data_domain])
+            #pragma omp target enter data map(to: ut0[0:gpu_data_domain+halo])
             printf("Sent ut0 to GPU!\n");
-            #pragma omp target enter data map(to: ut1[0:gpu_data_domain])
+            #pragma omp target enter data map(to: ut1[0:gpu_data_domain+halo])
             printf("Sent ut1 to GPU!\n");
-            #pragma omp target enter data map(to: ut2[0:gpu_data_domain])
+            #pragma omp target enter data map(to: ut2[0:gpu_data_domain+halo])
             printf("Sent ut2 to GPU!\n");
         }
         float r1 = 7.839999675750732421875;
@@ -120,20 +120,16 @@ int main()
                                               r0 * r1 * ut0[(x * size_u[0] + 1) + y]) +
                             1.99999991F * ut0[(x * size_u[0]) + y] -
                             9.99999955e-1F * ut2[(x * size_u[0]) + y];
-                // ut1[x * size_u[0] + y] = ut0[x * size_u[0] + y] + 1;
                 }
             }
             #pragma omp master
             {
-                // #pragma omp taskwait
-                #pragma omp target update from(ut1[0:gpu_data_domain-halo])
+                #pragma omp target update from(ut1[gpu_data_domain-halo:halo])
+                #pragma omp target update to(ut1[gpu_data_domain:halo])
                 aux = ut1;
                 ut1 = ut2;
                 ut2 = ut0;
                 ut0 = aux;
-                #pragma omp target update to(ut0[0:gpu_data_domain])
-                #pragma omp target update to(ut1[0:gpu_data_domain])
-                #pragma omp target update to(ut2[0:gpu_data_domain])
 
                 if(DEBUG) {
                     printf("UT0: %d\n", time);
@@ -147,10 +143,13 @@ int main()
         }
         #pragma omp master
         {
+            #pragma omp target update from(ut0[0:gpu_data_domain])
+            #pragma omp target update from(ut1[0:gpu_data_domain])
+            #pragma omp target update from(ut2[0:gpu_data_domain])
             #pragma omp target exit data map(release: vp[0:size_u[0] * size_u[1]])
-            #pragma omp target exit data map(release: ut0[0:gpu_data_domain])
-            #pragma omp target exit data map(release: ut1[0:gpu_data_domain])
-            #pragma omp target exit data map(release: ut2[0:gpu_data_domain])
+            #pragma omp target exit data map(release: ut0[0:gpu_data_domain+halo])
+            #pragma omp target exit data map(release: ut1[0:gpu_data_domain+halo])
+            #pragma omp target exit data map(release: ut2[0:gpu_data_domain+halo])
         }
     printf("Thread %d waiting time = %f seconds\n", omp_get_thread_num(), elapsed_time);
     }
@@ -189,7 +188,7 @@ void print_array(float *u, int x_size, int y_size)
 {
     for (int j = 0; j < x_size; j++){
         for (int k = 0; k < y_size; k++){
-            printf("%.7f ", u[j*x_size + k]);
+            printf("%.4f ", u[j*x_size + k]);
         }
         printf("\n");
     }
