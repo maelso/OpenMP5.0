@@ -15,10 +15,7 @@ int DIMS = 2;
 
 int main()
 {
-
-    double start_wait, end_wait;
-    double elapsed_time = 0;
-    int balance_factor = 2;
+    int balance_factor = 8;
     int BORDER_SIZE = 0;
     int SPACE_ORDER = 2;
     int time_m = 1;
@@ -28,16 +25,23 @@ int main()
         GRID_X_SIZE = 8;
         GRID_Y_SIZE = 8;
     }else{
-        time_M = 1609;
-        GRID_X_SIZE = 2048;
-        GRID_Y_SIZE = 2048;
+        time_M = 6430; // 18 seconds
+        GRID_X_SIZE = 16384;
+        GRID_Y_SIZE = 16384;
     }
-    int x_m = (int)BORDER_SIZE + SPACE_ORDER;
-    int x_m_cpu = (int)BORDER_SIZE + SPACE_ORDER + (GRID_X_SIZE/balance_factor);
-    int x_M = (int)BORDER_SIZE + SPACE_ORDER + GRID_X_SIZE;
-    int x_M_gpu = (int)BORDER_SIZE + SPACE_ORDER + (GRID_X_SIZE/balance_factor);
+    int x_m_gpu = (int)BORDER_SIZE + SPACE_ORDER;
+    int x_M_gpu = (int)(BORDER_SIZE + 2*SPACE_ORDER + GRID_X_SIZE) / balance_factor;
+    int x_m_cpu = (int)(BORDER_SIZE + 2*SPACE_ORDER + GRID_X_SIZE) / balance_factor;
+    int x_M_cpu = (int)BORDER_SIZE + SPACE_ORDER + GRID_X_SIZE;
     int y_m = (int)BORDER_SIZE + SPACE_ORDER;
     int y_M = (int)BORDER_SIZE + SPACE_ORDER + GRID_Y_SIZE;
+
+    if(DEBUG){
+        printf("x_m_gpu = %d\n", x_m_gpu);
+        printf("x_M_gpu = %d\n", x_M_gpu);
+        printf("x_m_cpu = %d\n", x_m_cpu);
+        printf("x_M_cpu = %d\n", x_M_cpu);
+    }
 
     const int size_u[] = {GRID_X_SIZE + 2 * BORDER_SIZE + 2 * SPACE_ORDER, GRID_Y_SIZE + 2 * BORDER_SIZE + 2 * SPACE_ORDER};
 
@@ -74,8 +78,12 @@ int main()
     printf("Using %d threads\n", num_threads);
 
     omp_set_num_threads(num_threads);
-    #pragma omp parallel private(start_wait, end_wait, elapsed_time)
+    #pragma omp parallel
     {
+
+        double start_wait, end_wait;
+        double elapsed_time = 0;
+
         #pragma omp master
         {
             #pragma omp target enter data map(to: vp[0:size_u[0] * size_u[1]])
@@ -93,7 +101,7 @@ int main()
             {
                 // GPU working
                 #pragma omp target teams distribute parallel for collapse(2) nowait
-                for (int x = x_m; x < x_M_gpu; x++){
+                for (int x = x_m_gpu; x < x_M_gpu; x++){
                     for (int y = y_m; y < y_M; y++){
                         float r0 = vp[(x * size_u[0]) + y] * vp[(x * size_u[0]) + y];
                         ut1[(x * size_u[0]) + y] =
@@ -108,11 +116,11 @@ int main()
                 }
             }
             // CPU working
-            #pragma omp for collapse(2) schedule(guided)
-            for (int x = x_m_cpu; x < x_M; x++){
+            #pragma omp for collapse(2) schedule(guided) nowait
+            for (int x = x_m_cpu; x < x_M_cpu; x++){
                 for (int y = y_m; y < y_M; y++){
-                float r0 = vp[(x * size_u[0]) + y] * vp[(x * size_u[0]) + y];
-                ut1[(x * size_u[0]) + y] =
+                    float r0 = vp[(x * size_u[0]) + y] * vp[(x * size_u[0]) + y];
+                    ut1[(x * size_u[0]) + y] =
                             -3.99999982e-2F * r0 * r1 * ut0[(x * size_u[0]) + y] +
                             9.99999955e-3F * (r0 * r1 * ut0[(x * size_u[0] - 1) + y] +
                                               r0 * r1 * ut0[((x-1) * size_u[0]) + y] +
