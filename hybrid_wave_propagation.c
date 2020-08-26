@@ -13,22 +13,33 @@ int TIME_ORDER = 3; // Change Request: Actually here we have time order 2, the v
 int DIMS = 2;
 
 
-int main()
+int main(int argc, char *argv[])
 {
-    int balance_factor = 8;
+    int balance_factor;
     int BORDER_SIZE = 0;
     int SPACE_ORDER = 2;
     int time_m = 1;
     int time_M, GRID_X_SIZE, GRID_Y_SIZE;
     if(DEBUG){
+        balance_factor = 2;
         time_M = 5;
         GRID_X_SIZE = 8;
         GRID_Y_SIZE = 8;
     }else{
+        balance_factor = 4;
         time_M = 6430; // 18 seconds
         GRID_X_SIZE = 16384;
         GRID_Y_SIZE = 16384;
     }
+    if(argc > 1){
+	GRID_X_SIZE = atoi(argv[1]);
+	GRID_Y_SIZE = atoi(argv[2]);
+	time_M = atoi(argv[3]);
+    }
+    if(argc > 4){
+        balance_factor = atoi(argv[4]);
+    }
+    printf("xsize = %d; ysize = %d; time = %d; balance_factor = %d \n", GRID_X_SIZE,GRID_Y_SIZE, time_M, balance_factor);
     int x_m_gpu = (int)BORDER_SIZE + SPACE_ORDER;
     int x_M_gpu = (int)(BORDER_SIZE + 2*SPACE_ORDER + GRID_X_SIZE) / balance_factor;
     int x_m_cpu = (int)(BORDER_SIZE + 2*SPACE_ORDER + GRID_X_SIZE) / balance_factor;
@@ -74,10 +85,12 @@ int main()
         print_array(ut2, size_u[0], size_u[1]);
     }
 
-    int num_threads = 8;
+    int num_threads = 32;
     printf("Using %d threads\n", num_threads);
 
     omp_set_num_threads(num_threads);
+
+    double start_time = omp_get_wtime();
     #pragma omp parallel
     {
 
@@ -114,9 +127,11 @@ int main()
                             9.99999955e-1F * ut2[(x * size_u[0]) + y];
                     }
                 }
+		//task wait 
+		//update from GPU
             }
             // CPU working
-            #pragma omp for collapse(2) schedule(guided) nowait
+            #pragma omp for collapse(2) schedule(guided)
             for (int x = x_m_cpu; x < x_M_cpu; x++){
                 for (int y = y_m; y < y_M; y++){
                     float r0 = vp[(x * size_u[0]) + y] * vp[(x * size_u[0]) + y];
@@ -132,6 +147,7 @@ int main()
             }
             #pragma omp master
             {
+		//task wait
                 #pragma omp target update from(ut1[gpu_data_domain-halo:halo])
                 #pragma omp target update to(ut1[gpu_data_domain:halo])
                 aux = ut1;
@@ -161,6 +177,9 @@ int main()
         }
     printf("Thread %d waiting time = %f seconds\n", omp_get_thread_num(), elapsed_time);
     }
+
+    double end_time = omp_get_wtime();
+    printf("Total time = %f seconds\n", end_time - start_time);
 
     if(SAVE){
         printf("Saving data into .txt file...\n");    
