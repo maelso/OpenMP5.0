@@ -15,34 +15,29 @@ int DIMS = 2;
 
 int main(int argc, char *argv[])
 {
-    int balance_factor;
     int BORDER_SIZE = 0;
     int SPACE_ORDER = 2;
     int time_m = 1;
     int time_M, GRID_X_SIZE, GRID_Y_SIZE;
+    float gpu_partition = atof(argv[1]);
     if(DEBUG){
-        balance_factor = 2;
         time_M = 5;
         GRID_X_SIZE = 8;
         GRID_Y_SIZE = 8;
     }else{
-        balance_factor = 4;
         time_M = 6430; // 18 seconds
-        GRID_X_SIZE = 16384;
-        GRID_Y_SIZE = 16384;
+        GRID_X_SIZE = 32768;
+        GRID_Y_SIZE = 32768;
     }
-    if(argc > 1){
-	GRID_X_SIZE = atoi(argv[1]);
-	GRID_Y_SIZE = atoi(argv[2]);
-	time_M = atoi(argv[3]);
+    if(argc > 2){
+	GRID_X_SIZE = atoi(argv[2]);
+	GRID_Y_SIZE = atoi(argv[3]);
+	time_M = atoi(argv[4]);
     }
-    if(argc > 4){
-        balance_factor = atoi(argv[4]);
-    }
-    printf("xsize = %d; ysize = %d; time = %d; balance_factor = %d \n", GRID_X_SIZE,GRID_Y_SIZE, time_M, balance_factor);
+    printf("xsize = %d; ysize = %d; time = %d; gpu_partition = %f \n", GRID_X_SIZE,GRID_Y_SIZE, time_M, gpu_partition);
     int x_m_gpu = (int)BORDER_SIZE + SPACE_ORDER;
-    int x_M_gpu = (int)(BORDER_SIZE + 2*SPACE_ORDER + GRID_X_SIZE) / balance_factor;
-    int x_m_cpu = (int)(BORDER_SIZE + 2*SPACE_ORDER + GRID_X_SIZE) / balance_factor;
+    int x_M_gpu = (int)(BORDER_SIZE + 2*SPACE_ORDER + GRID_X_SIZE) * gpu_partition;
+    int x_m_cpu = (int)(BORDER_SIZE + 2*SPACE_ORDER + GRID_X_SIZE) * gpu_partition;
     int x_M_cpu = (int)BORDER_SIZE + SPACE_ORDER + GRID_X_SIZE;
     int y_m = (int)BORDER_SIZE + SPACE_ORDER;
     int y_M = (int)BORDER_SIZE + SPACE_ORDER + GRID_Y_SIZE;
@@ -61,7 +56,7 @@ int main(int argc, char *argv[])
 
     int time_offset = size_u[0] * size_u[1];
     int halo = size_u[0] * (SPACE_ORDER/2);
-    int gpu_data_domain = ((size_u[0] * size_u[1]) / balance_factor);
+    int gpu_data_domain = ((size_u[0] * size_u[1]) * gpu_partition);
     
     // time pointers
     float *ut0 = u;
@@ -147,7 +142,7 @@ int main(int argc, char *argv[])
             }
             #pragma omp master
             {
-		//task wait
+		#pragma omp taskwait
                 #pragma omp target update from(ut1[gpu_data_domain-halo:halo])
                 #pragma omp target update to(ut1[gpu_data_domain:halo])
                 aux = ut1;
